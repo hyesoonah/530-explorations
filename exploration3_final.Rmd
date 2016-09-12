@@ -1,0 +1,226 @@
+---
+title: 'Exploration 3: Description of Relationships II'
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+bibliography: classbib.bib
+fontsize: 10pt
+geometry: margin=1in
+mainfont: "Crimson Text"
+graphics: yes
+output:
+  html_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+---
+
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+\input{mytexsymbols}
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("exploration1.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("exploration1.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  fig.retina=FALSE,
+  message=FALSE,
+  comment=NA)
+```
+
+
+```{r initialize,echo=FALSE}
+##First, just setup the R environment for today:
+if(!file.exists('figs')) dir.create('figs')
+
+options(SweaveHooks=list(fig=function(){
+			   par(mar=c(3.5, 3, 1.1, 0),
+			       pty="s",
+			       mgp=c(1.5,0.5,0),
+			       oma=c(0,0,0,0))},
+			 echo=function(){options(continue=" ") ##Don't show "+" prompts,
+			 options(prompt=" ")
+			 }),
+	digits=4,
+	scipen=8,
+	width=132
+	)
+options(error=function(){options(prompt="> ",continue="+ ");NULL})
+```
+
+"Ok, so you helped us solve an important problem in our UK office. However, my staff is now having another debate. This time they are saying that the relationship between age and support for Trump is non-linear. Right now some are yelling 'Is not!' and others are yelling 'Is too!'. Now, I don't understand why anyone would care about a non-linear relationship. Isn't a linear relationship good enough? What does non-linearity gain us? Can you explain to me in substantive terms what a non-linear relationship might teach us versus a linear one? (I also think that this question and the conflict here at my staff table cannot be this simple.)"
+
+"I found some data that might bear on this question."
+
+```{r}
+download.file("http://jakebowers.org/Data/ANES/anes_pilot_2016_csv.zip",destfile="anespilot2016.csv.zip")
+unzip("anespilot2016.csv.zip")
+anespi16<-read.csv("anes_pilot_2016.csv",as.is=TRUE,strip.white=TRUE)
+```
+
+"Oh. Also, before I run, I can tell you that the two sides are now yelling about 'global' versus 'local' smoothers. And I don't even hear them talking about the kinds of questions you've talked with me about in regards overly influential points and methods for handling them. I know that if I don't go back with at least one global but non-linear smoothed solution, one global linear smoothed solution, and two local non-linear smoothed solution, I'm going to look silly and they will ignore me, even though I'm the leader of this team! I need to act with authority, so I need to be able to say why I made the choices I made and why I avoided other choices. I will need to explain the strengths and weakness of my choices, but to defend one choice above others in order to act decisively in this cyber-theater. Help!"
+
+```{r}
+
+attach (anespi16)
+par( mfrow = c( 2, 2 ) )
+
+summary(anespi16$fttrump)
+table(anespi16$fttrump)
+
+# Basic inspection of variables 'fttrump' and 'birthyr'
+age <- anespi16$birthyr
+trump <- anespi16$fttrump
+plot(age, trump)
+
+```
+
+As can be seen from the plot above, most data from the trump feeling thermometer (fttrump) was between 0-100 as expected; however, a few values were almost 1000. The codebook does not provide an explanation for these outliers, but 'flag_fttrump' shows that three of the participants did not answer. We believe these high values are non-answers and need to be removed from the analysis. To do this, we used a subset of vectors of 'fttrump' to include only the values equal to or less than 100. 
+
+1. Non-Linearity and Smoothing: The limitations of linear regression lies in its assumption that the relationship between the predictors and the response are 1) additive and 2) linear, even though these restrictive assumptions are often violated in practice (James et al., p.86). Here, we will focus on the latter; the limitation of linear regression in terms of its assumption that there is a linear relationship between the responses and predictors. One way to identify non-linearity is to create a residual plot. If the residual plot shows no discernible pattern, we can assume a linear relationship. If the residual plot shows some sort of a pattern (i.e. a U-shape), this indicates non-linearity in the data. Sometimes, the relationship between two variables cannot be perfectly represented by a straight line, and so the relationship needs to be 'smoothed.' This process of smoothing can be done in various ways. 
+When you draw a line through data, you need to think of how that line is going to pass through the points. Global smoothers look at the whole dataset and attempt to draw the line in one shot. The line does not have to be straight, but every point has equal influence on determining the shape of the line. Global smoothers do a decent job of presenting the overall picture, but they don't do a good job if there are distinct subsets that have may have different relationships.
+
+In that sense, local smoothers can do a better job of representing the true relationship as they are a more sensitive and smaller-scale variation than global smoothers. For example, while you could think of age as a continuous variable, you may also want to consider distinct generations. Voters that matured before the Vietnam War will likely have a different view of government intervention in foreign countries than voters that matured after the war. Of course, you could parse out the data into different subsets and then look for correlations. Or you can use local smoothers and set your break points for specific intervals. Ideally, these break points would be based on some rational hypothesis instead of just a randomly assigned interval. 
+
+It is possible to draw a line that PERFECTLY represents the data, but you would have to connect each and every dot and would end up with no useful information beyond just plotting the points. This is referred to as 'overfit' and should be avoided. All in all, smoothing carries it's own risks. But it can be done in a way where the relationships are properly defined with sufficent precison and accuracy, but not too precise as to lose usability.  
+
+2. Solutions: The first relationship model presented below is that of a global linear smoothed solution. This was done with least squares linear regression similiar to what used before. Least squares does a good job at finding a best fit line through the data, but it is a globally smoothed line and thus subject to influence by extreme points. 
+
+```{r}
+
+# Linear regression (least squares)
+with (subset (anespi16,fttrump<=100), plot (birthyr, fttrump, col="azure3", pch=20))
+title ("linear regression (least squares)")
+lmlinear <- lm(fttrump ~ birthyr, data=anespi16, subset=fttrump<=100)
+abline ((coef (lmlinear)), col = "red")
+lmlinear # Displays coefficent and intercept of lmlinear
+
+lmlinear2 <- lm(fttrump ~ birthyr, data=anespi16)
+trump.res <- resid(lmlinear2) # Examining residuals
+plot(anespi16$birthyr, trump.res, 
+     ylab="Residuals", xlab="Birth Year", 
+     main="Trump Support") # Had to run a separate linear regression that re-includes outliers of 'fttrump' to make lengths of 'x' and 'y' equal. 
+
+```
+
+The next plot for you to look at is the polynomial regression line. This is also a globally smoothed line similarly to the least squares, but it is not limited to being straight. That is, ploynomial regression is an extension of the linear model to accomodate non-linear relationships by including transformed versions of the predictors in the model. Using this method, we predicted 'fttrump' using a non-linear function of 'birthyr.' This essentially is a multiple linear regression model that includes polynomial functions of the predictors in the regression model. 
+
+```{r}
+
+# Polynomial Regression (based on James, Statistical Learning, p. 288)
+with (subset (anespi16,fttrump<=100), plot (birthyr, fttrump, col="azure3", pch=20))
+title ("Polynomial Regression")
+
+fittrump = lm(fttrump ~ poly(birthyr,4), data=anespi16, subset=fttrump<=100)
+coef(summary(fittrump))
+
+birthlims = range(birthyr)
+trump.grid = seq(from=birthlims[1],to=birthlims[2])
+trumppreds = predict(fittrump, newdata = list(birthyr=trump.grid), se=TRUE)
+se.bandstr = cbind(trumppreds$fit+2*trumppreds$se.fit, trumppreds$fit-2*trumppreds$se.fit)
+
+lines(trump.grid,trumppreds$fit,lwd=2,col="blue") # Displays coefficents and intercept of fittrump polynomial
+fittrump
+matlines(trump.grid,se.bandstr,lwd=1, col = "blue",lty = 3)
+
+```
+
+Since the line doesn't need to be straight, you can see local variation. However, this is not the same as local smoothing. As you can see, it still shows the general negative relationship between Trump support and age. However, it now appears that there are three distinct groups with different relationships: Voters born before 1950 show an increase in Trump support with age, voters born between 1950 and 1980 have a flat support for Trump, and voters born after 1980 return to the first relationship with older voters being more supportive of Trump. If you want to do local smoothing but don't know where to begin, a polynomial regression can help you visualize areas that need further review.
+
+Building upon the polynomial regression, we would now like to show you a step function regression. This method splits the line into distinct areas with only the points with each area influencing the shape of the line in that area. Here, we broke the range of 'birthyr' into 'bins' and fit a different constant in each bin, thereby converting a continuous variable, 'birthyr,' into an ordered categorical variable.
+
+```{r}
+
+# Step Functions
+# Based on https://www.r-bloggers.com/estimating-continuous-piecewise-linear-regression/
+with (subset (anespi16,fttrump<=100), plot (birthyr, fttrump, col="azure3", pch=20))
+title ("Step Functions")
+
+N <- nrow(subset (anespi16,fttrump<=100)) # Number of sampled points
+K <-3 # Number of knots. With three knots, the step functions regression is closer to the polynomial line.
+# With the knots values (1940, 1959, 1978), one could focus on a particular set.
+
+piece.formula <- function(var.name, knots) {
+  formula.sign <- rep(" - ", length(knots))
+  formula.sign[knots < 0] <- " + "
+  paste(var.name, "+",
+        paste("I(pmax(", var.name, formula.sign, abs(knots), ", 0))",
+              collapse = " + ", sep=""))
+}
+
+f <- function(x) {
+  2 * sin(6 * x)
+}
+
+trumpdata <- subset(anespi16, fttrump<=100)
+x <- as.vector (trumpdata$birthyr)
+y <- as.vector(trumpdata$fttrump)
+      
+knots <- seq(min(x), max(x), len = K + 2)[-c(1, K + 2)]
+
+model <- lm(formula(paste("y ~", piece.formula("x", knots))))
+
+par(mar = c(4, 4, 1, 1))
+
+points(knots, predict(model, newdata = data.frame(x = knots)),
+       col = "green", pch = 16, cex = 2)
+
+trumpoints <- data.frame (knots, predict(model, newdata = data.frame(x = knots)))
+colnames(trumpoints) <- c("knots","value")
+firsttrump <- data.frame (x=min(birthyr), predict(model, newdata = data.frame(x=min(birthyr))))
+colnames(firsttrump) <- c("knots","value")
+lassttrump <- data.frame (x=max(birthyr), predict(model, newdata = data.frame(x=max(birthyr))))
+colnames(lassttrump) <- c("knots","value")
+
+lines ((rbind (firsttrump,trumpoints,lassttrump)),lwd=2,col="green")
+
+```
+
+Step function is silmiar to the least squares method, but with more distinct areas. This often gives the step function a more jagged look as the line is influenced by the different areas. Since you choose how you want to create the different areas for measurement, you need to think about where you want your break points. We chose break points that were similar to the changes in the slope of the polynomial regression. Choosing these points will act as a test to see if the polynomial regression is accurately reflecting the data or being overly influenced by its global nature. Overall the trends hold, but there are some differnces that might warrant futher investigation to hone in on voting behvior changes.
+
+And last but not least, the local regresion (below) works like a blend of the polynomial regression and the step function in that it allows you to set break points for local smoothing, but the segments from area to area do not need to be straight. The segments do need to be continuous unlike a piecewise polynomial. For the local regression, you don't need to set specifc breakpoints, but instead determine what percentage of an axis you want to examine at a time. The larger the span, the smoother the line because more data points are influencing the segment. A smaller span, though, runs the risk of being overfit. 
+
+```{r}
+
+# Local Regression (based on James, Statistical learning, p. 294)
+with (subset (anespi16,fttrump<=100), plot (birthyr, fttrump, col="azure3", pch=20))
+title ("Local Regression")
+
+# Three different spans were used to see if there were noticeable differences. "The larger the span, the smoother the fit" (James, p.294), but we wanted to make sure that we were balanced in terms of precision and accuracy.
+fit=loess(fttrump ~ birthyr, span=.8, data=anespi16, subset=fttrump<=100) # Considering 80% of neighbors
+fit2=loess(fttrump ~ birthyr, span=.5, data=anespi16, subset=fttrump<=100) # Considering 50% of neighbors
+fit3=loess(fttrump ~ birthyr, span=.2, data=anespi16, subset=fttrump<=100) # Considering 20% of neighbors
+
+lines (trump.grid, predict(fit,data.frame(birthyr=trump.grid)),col="red",lwd=2,lty=3)
+lines (trump.grid, predict(fit2,data.frame(birthyr=trump.grid)),col="blue",lwd=2,lty=3)
+lines (trump.grid, predict(fit3,data.frame(birthyr=trump.grid)),col="green",lwd=2,lty=3)
+
+```
+
+Here, we ran regressions with a 20% span, a 50% span and an 80% span. Overall they are very similar, but the 20% span (green line) shows much more choppiness in the 1950-1970 range. This is an example of the line being overfit in that segment. Unless you are particularly interested in that particular group of voters, I wouldn't waste time trying to interpret each peak and valley.  
+
+Since it seems that your team is most interested in large-scale general trends, I would go with the polynomial regression. It shows some interesting changes in patterns, but since it is a global smoother, you don't need to spend time finding specific breaks for local smoothers. If you have a member that is interested in local effects, the polynomial regression will give them a place to start narrowing their focus.
+
+
