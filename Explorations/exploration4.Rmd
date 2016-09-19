@@ -1,0 +1,219 @@
+---
+title: 'Exploration 4: Two Variables Relationships as Causal Relationships'
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+bibliography: classbib.bib
+fontsize: 10pt
+geometry: margin=1in
+mainfont: "Crimson Text"
+graphics: yes
+output:
+  html_document:
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+---
+
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+\input{mytexsymbols}
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("exploration1.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("exploration1.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  fig.retina=FALSE,
+  message=FALSE,
+  comment=NA)
+```
+
+
+```{r initialize,echo=FALSE}
+##First, just setup the R environment for today:
+if(!file.exists('figs')) dir.create('figs')
+
+options(SweaveHooks=list(fig=function(){
+			   par(mar=c(3.5, 3, 1.1, 0),
+			       pty="s",
+			       mgp=c(1.5,0.5,0),
+			       oma=c(0,0,0,0))},
+			 echo=function(){options(continue=" ") ##Don't show "+" prompts,
+			 options(prompt=" ")
+			 }),
+	digits=4,
+	scipen=8,
+	width=132
+	)
+options(error=function(){options(prompt="> ",continue="+ ");NULL})
+```
+
+
+```{r datasetup, cache=TRUE}
+download.file("http://jakebowers.org/Data/ANES/anes_pilot_2016_csv.zip",destfile="anespilot2016.csv.zip")
+unzip("anespilot2016.csv.zip")
+anespi16<-read.csv("anes_pilot_2016.csv",as.is=TRUE,strip.white=TRUE)
+```
+
+You friend calls back. "I really appreciated all of the work that you did with
+describing the relationships between age and Trump support. Of course, as soon
+as your results came in, the team began to bicker: "Older people like Trump
+because they are just inherently conservative. It is not age per se that causes this relationship, but the fact that ideology changes over time within the life span." 
+
+Then the others argued, "First, there is no fact that ideology changes over time within the life span. Second, I think that this relationship just shows that people who are older have had more time to dislike Clinton --- the young people don't know that much about the Clintons, and so they are not yet disillusioned." And other group argued, "So one of you is saying that age
+causes Trump support because ideology is related to age? And the other is that
+age causes Trump support because political knowledge and experience is related
+to age? But, both of you seem to be ignoring the nonlinear descriptions that we did. Didn't it seem like there were different age groups that responded to
+Trump differently? Don't you think that this is caused by the fact that the
+ethnic composition of the country has changed, and that Trump consistently
+offends non-white voters? That is, that the relationship is caused by the
+underlying relationship between age and ethnicity and Trump's offensive
+comments?"
+
+"I started to try to calm the waters in my team, but I only go this far."
+
+```{r}
+table(anespi16$fttrump,useNA="ifany")
+table(anespi16$birthyr,useNA="ifany")
+
+anespi16$fttrump[anespi16$fttrump==998]<-NA
+anespi16$age <- 2016-anespi16$birthyr
+
+summary(anespi16$age)
+summary(anespi16$fttrump)
+
+```
+
+"First, I was getting confused about the use of the word, 'cause'. I didn't quite know what they meant. And, I didn't know how to start using the data on hand to engage with these alternative causal explanations if I didn't know what they meant by cause. The problem is now that I'm back abroad, I can't ask them. What is your best guess? Can you explain it to me? For example, why would thinking about cause one way help me use data to engage with these kinds of arguments? And, of course, I'm relying on you for your advice about which explanation is correct. Please help!  I'm also wondering about your own favorite explanation. One that is not one of those three. What is it? What is the evidence in favor of it or against it?"
+
+```{r}
+```
+
+What causes Trump support? So far, our friend suggested age, ideology, political knowledge and ethnicity as some of the possible "causes" for Trump support. Of course, none of these causes is absolutely necessary for someone to show Trump support. An older, conservative person with a high level of political knowledge regarding Clinton may still be a supporter for Trump even though he/she is non-white. Also, none of these causes is in themselves sufficient to lead to Trump support. That is, just because someone is white does not necessarily mean that they will support Trump. 
+
+From this, we can see that age, ideology, political knowledge and ethnicity are only one of many sets of factors that can lead to Trump support. Quite obviously, we can never know all of the factors that lead to Trump support as well as how these factors relate to each other. Thus, when speaking of causal relationships, we should not say that "X causes Y" in a deterministic sense, but only that X (age, ideology, political knowledge and ethnicity) increases the probability that Y (Trump support) will occur. 
+
+When it comes to “effects,” we need to first talk about counterfactual inference. A counterfactual is something that is contrary to fact. For instance, if we were to say “Having a high level of political knowledge causes Trump support,” the counterfactual would be knowledge of what would have happened in an alternate world where the same people did not have high levels of political knowledge and everything else remained the same. And an “effect” would be the difference between what did happen and what would have happened.   
+The problem in our scenario, though, is that age, ethnicity, political knowledge and ideology are non-manipulable attributes because we cannot deliberately vary these factors by either going back in time or conducting an experiment where we manipulate political knowledge and ideology. Thus, we need to find a closest possible world and explore counterfactual conditions through matching, which can be done using subsets in R. 
+
+Explanation #1. Age causes Trump support because ideology is related to age. Below, we can see that age is, in fact, positively correlated to ideology; the older you are, the more conservative your political ideology. However, it should be noted that 0.18 is a rather weak correlation and since this data is not a time-series analysis, is it difficult to say that growing older contributed to changes in ideology. Nonetheless, we still ran a linear regression where Trump support is explained in terms of age, focusing on two subsets of people who were either very liberal or very conservative:
+
+```{r}
+
+# Install the car package
+install.packages("car")
+# Load the car package
+library(car)
+
+cor(anespi16$age, anespi16$lcself) # Weak correlation
+
+# Runs linear regression of trump vs age, but only for those self identifying as very conservative
+ lmcons<- lm(fttrump~anespi16$age, data = anespi16, subset=lcself=="7")
+# Displays coef
+coef(lmcons)
+# Runs linear regression of trump vs age, but only for those self identifying as very liberal
+lmlib <- lm(fttrump~anespi16$age, data = anespi16, subset=lcself=="1") 
+#Displays coef
+coef(lmlib)
+
+```
+
+The coef(lmcons) was ~0.64 and the coef(lmlib) was ~-0.05.  So while increasing age is strongly correlated with identifying as very conservative, there is almost no correlation with increasing age and decreasing liberal identification.  This suggests that age alone does not explain changes in political ideology.
+
+Explanation #2. Age causes Trump support because political knowledge and experience is related to age. We also looked at whether political knowledge increased with age.  We did this to evaluate whether old voters supported trump because they had experience to warrant disliking Clinton.  (The phrasing that your co-worker used says quite a bit about their preferences, so tread carefully).  We  looked at a question regarding the expenditure on various budgetary items and whether participants knew that the U. S. spends much less on foreign aid than they other categories. Each possible answer was coded numerically, but it doesn’t represent a linear scale so we recoded the answer in a binary fashion.  If the answer was correct, it was recoded as a 1.  All other answers were recoded as 0.  If age did cause an increase in political knowledge and thus support for Trump, we should see a positive correlation between age and correct scores in knowledge and a negative correlation in age and incorrect scores in knowledge.  
+
+```{r}
+
+know <- recode(anespi16$pk_spend, "1=1;else=0") # People who correctly answered that the U.S. federal government currently spends the least on foreign aid.  
+
+lm(fttrump ~ age, data=anespi16, subset=know==1)
+lm(fttrump ~ age, data=anespi16, subset=know==0)
+
+```
+
+We did not find any evidence that political knowledge increased with age.  Both regressions had positive and similar coefficients. This suggests that the true relationship is that as you age you either have more or less political knowledge.  This relationship is not helpful for understanding Trump support.
+
+Explanation #3. Different age groups responded to Trump differently, which is caused by the change in ethnic composition of the country and Trump being unfavorable with the non-white voters. 
+
+```{r}
+
+plot (age, fttrump, col="azure3", pch=20)
+
+agelims = range(age)
+
+plotgrid =seq(from=agelims[1],to=agelims[2])
+ 
+fit=loess(fttrump ~ age, span=.8, data=anespi16)
+
+summary(fit)
+
+fitW=loess(fttrump ~ age, span=.8, data=anespi16, subset=race==1)
+
+summary(fitW)
+
+fitNW=loess(fttrump ~ age, span=.8, data=anespi16, subset=race!=1)
+
+summary(fitNW)
+
+lines (plotgrid, predict(fit,data.frame(age=plotgrid)),col="green",lwd=2)
+lines (plotgrid, predict(fitW,data.frame(age=plotgrid)),col="red",lwd=2)
+lines (plotgrid, predict(fitNW,data.frame(age=plotgrid)),col="blue",lwd=2)
+
+```
+
+By considering age and race, and using non-linear local regression to plot white and non-white voters, it is clear that the argument that “Older people like Trump because they are just inherently conservative” can not be generalized as the number of non-white older than 40 years tend to give Trump a low value in the scale. It is interesting then, that the distance between the two non-linear regression is closer around people in their 30s. 
+
+Explanation #4. Another possible explanation for Trump support is that the older generation are simply more concerned about the economy than the younger generation and thus believe that Trump is the best candidate to save the economy. A similar case happened in Korea back in 2008 when Lee Myung Bak, a conservative former businessman and politician, became president of South Korea. His past experience as a successful businessman appealed to the older conservatives of South Korea, winning him the presidency. 
+
+## For more info, see https://www.theguardian.com/world/2007/dec/19/korea.jonathanwatts
+
+Here, we ran linear regressions with different subsets. The first set of regressions explains Trump support by age, looking at the people who either ranked economy as 1~4th most important issue in terms of choosing a political candidate or did not rank economy as an important issue. The second set of regressions additionally control for ideology (conservatives) and the third set additionally controls for ideology (conservatives) and race (white). Overall, it seems that white conservatives who consider economy as an important issue show more Trump support with age. White conservatives who do NOT consider economy as an important issue also showed more Trump support with age, although not to the extent of the former group. 
+
+ 
+```{r}
+
+lm_econ_imp <- lm(fttrump ~ age, data = anespi16, subset = ISSUES_OC14_11 %in% 1:4)
+lm_econ_unimp <- lm(fttrump ~ age, data = anespi16, subset = ISSUES_OC14_11 == "8")
+
+summary(lm_econ_imp)
+summary(lm_econ_unimp)
+
+lm_econ_impcon <- lm(fttrump ~ age, data = anespi16, subset = lcself==5:7 & ISSUES_OC14_11 %in% 1:4)
+lm_econ_unimpcon <- lm(fttrump ~ age, data = anespi16, subset = lcself==5:7 & ISSUES_OC14_11==8)
+summary(lm_econ_impcon)
+summary(lm_econ_unimpcon)
+
+lm_econ_impconw <- lm(fttrump ~ age, data = anespi16, subset = race==1 & lcself==5:7 & ISSUES_OC14_11 %in% 1:4)
+lm_econ_unimpconw <- lm(fttrump ~ age, data = anespi16, subset = race==1 & lcself==5:7 & ISSUES_OC14_11==8)
+summary(lm_econ_impconw)
+summary(lm_econ_unimpconw)
+
+```
+
+
+# References
+
+Shadish, R., Cook, D., & Campbell, T. (2001). Experiments and generalized causal inference. In Experimental and Quasi-Experimental Design for Generalized Causal Inference. Houghton Mifflin.
+
